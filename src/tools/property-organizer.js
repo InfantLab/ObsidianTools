@@ -3,15 +3,15 @@ import chalk from 'chalk';
 import { PropertyManager } from '../core/property-manager.js';
 import { FileProcessor } from '../core/file-processor.js';
 import { Logger } from '../utils/logger.js';
+import { FolderSelector } from '../utils/folder-selector.js';
 
 export class PropertyOrganizer {
     constructor() {
         this.logger = new Logger();
         this.propertyManager = new PropertyManager();
         this.fileProcessor = new FileProcessor();
-    }
-
-    /**
+        this.folderSelector = new FolderSelector();
+    }    /**
      * Interactive mode for property organization
      */
     async interactiveMode(vaultManager) {
@@ -20,6 +20,20 @@ export class PropertyOrganizer {
             this.logger.error('No vault selected');
             return;
         }
+
+        // Use the folder selector to get scope and target path
+        const selection = await this.folderSelector.selectScope(vault.path, {
+            scopePrompt: 'What scope would you like to work with for property operations?',
+            folderPrompt: 'Select a folder to process properties:',
+            showFileCount: true
+        });
+
+        if (!selection) {
+            this.logger.warn('No selection made, canceling property operations');
+            return;
+        }
+
+        const targetPath = selection.path;
 
         const answers = await inquirer.prompt([
             {
@@ -39,26 +53,27 @@ export class PropertyOrganizer {
                     return input.length > 0 ? true : 'Please select at least one operation';
                 }
             }
-        ]);
-
-        await this.organize({
-            path: vault.path,
-            operations: answers.operations
+        ]); await this.organize({
+            path: targetPath,
+            operations: answers.operations,
+            scope: selection.scope,
+            relativePath: selection.relativePath || 'vault root'
         });
-    }
-
-    /**
+    }    /**
      * Main organization method
      */
     async organize(options) {
-        const { path: vaultPath, operations = ['analyze'] } = options;
+        const {
+            path: targetPath,
+            operations = ['analyze'],
+            scope = 'entire',
+            relativePath = 'vault root'
+        } = options;
 
-        this.logger.info('Starting property organization...');
-
-        try {
+        this.logger.info(`Starting property organization for ${relativePath}...`); try {
             // Get all markdown files
-            const files = await this.getAllMarkdownFiles(vaultPath);
-            this.logger.info(`Found ${files.length} markdown files`);
+            const files = await this.getAllMarkdownFiles(targetPath);
+            this.logger.info(`Found ${files.length} markdown files in ${relativePath}`);
 
             // Process files
             const { results, errors } = await this.fileProcessor.processFiles(files, {
@@ -69,11 +84,9 @@ export class PropertyOrganizer {
 
             if (errors.length > 0) {
                 this.logger.warn(`${errors.length} files had processing errors`);
-            }
-
-            // Perform selected operations
+            }            // Perform selected operations
             for (const operation of operations) {
-                await this.performOperation(operation, results, vaultPath);
+                await this.performOperation(operation, results, targetPath);
             }
 
             this.logger.success('Property organization completed!');

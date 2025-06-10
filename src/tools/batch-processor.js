@@ -4,6 +4,7 @@ import { FileProcessor } from '../core/file-processor.js';
 import { PropertyOrganizer } from './property-organizer.js';
 import { FileOrganizer } from './file-organizer.js';
 import { Logger } from '../utils/logger.js';
+import { FolderSelector } from '../utils/folder-selector.js';
 
 export class BatchProcessor {
     constructor() {
@@ -11,9 +12,8 @@ export class BatchProcessor {
         this.fileProcessor = new FileProcessor();
         this.propertyOrganizer = new PropertyOrganizer();
         this.fileOrganizer = new FileOrganizer();
-    }
-
-    /**
+        this.folderSelector = new FolderSelector();
+    }    /**
      * Interactive mode for batch processing
      */
     async interactiveMode(vaultManager) {
@@ -22,6 +22,20 @@ export class BatchProcessor {
             this.logger.error('No vault selected');
             return;
         }
+
+        // Use the folder selector to get scope and target path
+        const selection = await this.folderSelector.selectScope(vault.path, {
+            scopePrompt: 'What scope would you like to process in batch?',
+            folderPrompt: 'Select a folder for batch processing:',
+            showFileCount: true
+        });
+
+        if (!selection) {
+            this.logger.warn('No selection made, canceling batch processing');
+            return;
+        }
+
+        const targetPath = selection.path;
 
         const answers = await inquirer.prompt([
             {
@@ -38,44 +52,45 @@ export class BatchProcessor {
                     { name: '📊 Validation and Reporting', value: 'validation' }
                 ]
             }
-        ]);
-
-        await this.process({
-            path: vault.path,
-            operation: answers.batchType
+        ]); await this.process({
+            path: targetPath,
+            operation: answers.batchType,
+            scope: selection.scope,
+            relativePath: selection.relativePath || 'vault root'
         });
-    }
-
-    /**
+    }    /**
      * Main batch processing method
      */
     async process(options) {
-        const { path: vaultPath, operation } = options;
+        const {
+            path: targetPath,
+            operation,
+            scope = 'entire',
+            relativePath = 'vault root'
+        } = options;
 
-        this.logger.info(`Starting batch processing: ${operation}`);
-
-        try {
+        this.logger.info(`Starting batch processing: ${operation} for ${relativePath}`); try {
             switch (operation) {
                 case 'pipeline':
-                    await this.runPipeline(vaultPath);
+                    await this.runPipeline(targetPath);
                     break;
                 case 'content-updates':
-                    await this.bulkContentUpdates(vaultPath);
+                    await this.bulkContentUpdates(targetPath);
                     break;
                 case 'tag-operations':
-                    await this.bulkTagOperations(vaultPath);
+                    await this.bulkTagOperations(targetPath);
                     break;
                 case 'date-updates':
-                    await this.datePropertyUpdates(vaultPath);
+                    await this.datePropertyUpdates(targetPath);
                     break;
                 case 'find-replace':
-                    await this.findAndReplace(vaultPath);
+                    await this.findAndReplace(targetPath);
                     break;
                 case 'cleanup':
-                    await this.cleanupOperations(vaultPath);
+                    await this.cleanupOperations(targetPath);
                     break;
                 case 'validation':
-                    await this.validationAndReporting(vaultPath);
+                    await this.validationAndReporting(targetPath);
                     break;
                 default:
                     throw new Error(`Unknown batch operation: ${operation}`);

@@ -1,5 +1,5 @@
 {
-    "defaultVaultPath": "./vault",
+    "defaultVaultPath": "C:\\Users\\caspar\\brain - Copy",
     "fileExtensions": [
         ".md",
         ".markdown"
@@ -27,7 +27,7 @@
     "backup": {
         "createBackups": true,
         "backupLocation": "./backups",
-        "maxBackups": 10
+        "maxBackups": 20
     },
     "validation": {
         "checkEmptyFiles": true,
@@ -36,8 +36,8 @@
         "maxLineLength": 1000
     },
     "logging": {
-        "level": "info",
-        "logToFile": false,
+        "level": "warn",
+        "logToFile": true,
         "logFilePath": "./logs/obsidian-tools.log"
     }
 }

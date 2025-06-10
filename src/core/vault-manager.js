@@ -418,4 +418,19 @@ export class VaultManager {
 
         return await this.setCurrentVaultWithHistory(answer.vaultPath);
     }
+
+    /**
+     * Check if a given path is a valid Obsidian vault
+     * @param {string} vaultPath - Path to check
+     * @returns {Promise<boolean>} - True if path is a valid vault
+     */
+    async isValidVault(vaultPath) {
+        try {
+            const vaultInfo = await this.analyzeDirectory(vaultPath);
+            return vaultInfo.isVault;
+        } catch (error) {
+            this.logger.debug(`Error checking vault validity for ${vaultPath}:`, error.message);
+            return false;
+        }
+    }
 }

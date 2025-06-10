@@ -4,15 +4,15 @@ import chalk from 'chalk';
 import { FileProcessor } from '../core/file-processor.js';
 import { Logger } from '../utils/logger.js';
 import { FileUtils } from '../utils/file-utils.js';
+import { FolderSelector } from '../utils/folder-selector.js';
 
 export class FileOrganizer {
     constructor() {
         this.logger = new Logger();
         this.fileProcessor = new FileProcessor();
         this.fileUtils = new FileUtils();
-    }
-
-    /**
+        this.folderSelector = new FolderSelector();
+    }    /**
      * Interactive mode for file organization
      */
     async interactiveMode(vaultManager) {
@@ -21,6 +21,20 @@ export class FileOrganizer {
             this.logger.error('No vault selected');
             return;
         }
+
+        // Use the folder selector to get scope and target path
+        const selection = await this.folderSelector.selectScope(vault.path, {
+            scopePrompt: 'What would you like to organize?',
+            folderPrompt: 'Select a folder to organize:',
+            showFileCount: true
+        });
+
+        if (!selection) {
+            this.logger.warn('No selection made, canceling organization');
+            return;
+        }
+
+        const targetPath = selection.path;
 
         const answers = await inquirer.prompt([
             {
@@ -40,23 +54,28 @@ export class FileOrganizer {
         ]);
 
         await this.organize({
-            path: vault.path,
+            path: targetPath,
+            vaultPath: vault.path,  // Keep reference to vault root
             type: answers.organizationType
         });
-    }
-
-    /**
+    }    /**
      * Main organization method
      */
     async organize(options) {
-        const { path: vaultPath, type } = options;
+        const { path: targetPath, vaultPath = targetPath, type } = options;
 
         this.logger.info(`Starting file organization: ${type}`);
+        this.logger.info(`Target folder: ${path.relative(vaultPath, targetPath) || 'vault root'}`);
 
         try {
-            // Get all markdown files
-            const files = await this.getAllMarkdownFiles(vaultPath);
+            // Get all markdown files from the target path
+            const files = await this.getAllMarkdownFiles(targetPath);
             this.logger.info(`Found ${files.length} markdown files`);
+
+            if (files.length === 0) {
+                this.logger.warn('No markdown files found in the selected location');
+                return;
+            }
 
             // Process files
             const { results, errors } = await this.fileProcessor.processFiles(files, {
@@ -69,7 +88,7 @@ export class FileOrganizer {
                 this.logger.warn(`${errors.length} files had processing errors`);
             }
 
-            // Organize based on type
+            // Organize based on type - use vault root for organized folder structure
             switch (type) {
                 case 'date-created':
                     await this.organizeByDate(results, vaultPath, 'created');
@@ -87,7 +106,7 @@ export class FileOrganizer {
                     await this.organizeBySize(results, vaultPath);
                     break;
                 case 'rename':
-                    await this.renameFiles(results, vaultPath);
+                    await this.renameFiles(results, targetPath);
                     break;
                 case 'custom':
                     await this.customOrganization(results, vaultPath);
@@ -423,9 +442,7 @@ export class FileOrganizer {
         ]);
 
         return answer.proceed;
-    }
-
-    /**
+    }    /**
      * Helper methods
      */
     async getAllMarkdownFiles(vaultPath) {
