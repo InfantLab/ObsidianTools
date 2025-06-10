@@ -1,0 +1,43 @@
+{
+    "defaultVaultPath": "./vault",
+    "fileExtensions": [
+        ".md",
+        ".markdown"
+    ],
+    "excludePatterns": [
+        "node_modules",
+        ".git",
+        ".obsidian",
+        "*.tmp",
+        "*.backup.*"
+    ],
+    "propertyDefaults": {
+        "created": "auto",
+        "modified": "auto",
+        "tags": []
+    },
+    "organization": {
+        "dateFormat": "YYYY-MM-DD",
+        "folderStructure": {
+            "byDate": "organized/by-date/{year}/{year}-{month}",
+            "byTags": "organized/by-tags/{tag}",
+            "byType": "organized/by-type/{type}"
+        }
+    },
+    "backup": {
+        "createBackups": true,
+        "backupLocation": "./backups",
+        "maxBackups": 10
+    },
+    "validation": {
+        "checkEmptyFiles": true,
+        "checkMalformedFrontmatter": true,
+        "checkBrokenLinks": true,
+        "maxLineLength": 1000
+    },
+    "logging": {
+        "level": "info",
+        "logToFile": false,
+        "logFilePath": "./logs/obsidian-tools.log"
+    }
+}
